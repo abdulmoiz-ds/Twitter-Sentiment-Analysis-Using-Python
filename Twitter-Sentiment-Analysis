@@ -1,0 +1,121 @@
+Here you can get all the details of the project.
+
+
+Installing Tweepy
+
+First, install Tweepy using this command.
+
+!pip install tweepy
+
+Installing important libraries
+
+Now you have to install certain libraries.
+
+import tweepy
+from tweepy import Stream
+from tweepy import StreamListener
+import json
+from textblob import TextBlob
+import re
+import csv
+import numpy as np
+import pandas as pd
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+plt.style.use('fivethirtyeight')
+Connecting with Twitter via Twitter APIs
+
+Now you have to connect your notebook with Twitter to extract data using Twitter APIs. To do this step, you must have a Twitter Developer account and must know how to create an app on the account. Copy the following credentials and save them.
+
+consumer_key = "*********"
+consumer_secret = "*********"
+access_token = "************"
+access_token_secret = "**********"
+Making handler with Twitter
+
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(access_token, access_token_secret)
+We have successfully connected to Twitter. Now we have to extract tweets from Twitter.
+
+posts = api.user_timeline(screen_name = "JoeBiden", count = 100, lang="en-US", tweet_mode = 'extended')
+print("show 5 tweets: \n")
+i = 1
+for tweet in posts[0:10]:
+   print(str(i) + ') ' + tweet.full_text + '\n')
+   i = i+1
+Converting it to DataFrame
+
+We will convert the data into a data frame to perform analysis.
+
+df = pd.DataFrame([tweet.full_text for tweet in posts], columns = ['Tweets'])
+df.head()
+Data Cleaning
+
+Cleaning data is very important.
+
+def cleanText(text):
+  text = re.sub(r'@[A-Za-z0-9]+', '', text)
+  text = re.sub(r'#', '', text) 
+  text = re.sub(r'RT[\s]+', '', text)
+  text = re.sub(r'https?:\/\/\S+', '', text)
+  
+  return text
+df['Tweets'] = df['Tweets'].apply(cleanText)
+df
+Checking Polarity of Words
+
+def getSubjectivity(text):
+  return TextBlob(text).sentiment.subjectivity
+def getPolarity(text):
+  return TextBlob(text).sentiment.polarity
+df ['Subjectivity'] = df['Tweets'].apply(getSubjectivity)
+df['Polarity'] = df['Tweets'].apply(getPolarity)
+df
+allwords = ' '.join([twts for twts in df['Tweets']])
+wordCloud = WordCloud(width = 500, height = 300, random_state = 21, max_font_size = 119).generate(allwords)
+plt.imshow(wordCloud, interpolation = 'bilinear')
+plt.axis('off')
+plt.show()
+Assigning Positive/Negative/Neutral according to Polarity
+
+def getAnalysis(score):
+  if score < 0:
+    return 'Negative'
+  elif score == 0:
+    return 'Neutral'
+  else:
+    return 'Positive'
+df['Analysis'] = df['Polarity'].apply(getAnalysis)
+df
+j=1
+sortedDF = df.sort_values(by=['Polarity'])
+for i in range(0, sortedDF.shape[0]):
+  if (sortedDF['Analysis'][i] == 'Positive'):
+     print(str(j)+ ') ' + sortedDF['Tweets'][i])
+     print()
+     j = j+1
+j=1
+sortedDF = df.sort_values(by=['Polarity'], ascending = 'False')
+for i in range(0, sortedDF.shape[0]):
+  if (sortedDF['Analysis'][i] == 'Positive'):
+     print(str(j)+ ') ' + sortedDF['Tweets'][i])
+     print()
+     j = j+1
+Checking Positive Tweets %
+
+ptweets = df[df.Analysis == 'Positive']
+ptweets = ptweets['Tweets']
+round((ptweets.shape[0]) / df.shape[0] * 100, 1)
+Checking Negative Tweets %
+
+ptweets = df[df.Analysis == 'Negative']
+ptweets = ptweets['Tweets']
+round((ptweets.shape[0]) / df.shape[0] * 100, 1)
+Making Histogram
+
+df['Analysis'].value_counts()
+plt.title("Joe Biden Sentiment Analysis")
+plt.xlabel("Sentiments")
+plt.ylabel("Counts")
+df['Analysis'].value_counts().plot(kind='bar')
+plt.show()
